@@ -1,5 +1,26 @@
 import pandas
 
+# Germany job assignments split
+def split_germany_job_assignments(data, filename):
+    germany_mask = data["business unit description"].str.strip().str.lower() == "joby germany gmbh"
+    germany_data = data[germany_mask]
+    remaining_data = data[~germany_mask]
+    if not germany_data.empty:
+        germany_filename = filename.replace(".csv", "_JobyGermany.csv")
+        germany_data.to_csv(germany_filename)
+    return remaining_data
+
+# Germany users split
+def split_germany_users(data, filename):
+    germany_mask = data["business unit description"].str.strip().str.lower() == "joby germany gmbh"
+    germany_data = data[germany_mask]
+    remaining_data = data[~germany_mask]
+    if not germany_data.empty:
+        germany_filename = filename.replace(".csv", "_JobyGermany.csv")
+        germany_data.to_csv(germany_filename)
+    return remaining_data
+
+
 # Get filename through stdin
 filenname = input().strip('"')
 
@@ -8,6 +29,7 @@ while (filenname != 'q'):
     # Job Assignments file
     if "job assignments" in filenname.lower():
         data = data[~(data["useridnumber"].isna() | (data["useridnumber"] == ""))]
+        data = split_germany_job_assignments(data, filenname)
         data["Manager email"] = data["Manager email"].fillna("#N/A")
         for name_index in data.index:
             data.loc[name_index, "Manager email"] = data["Manager email"][name_index].lower()
@@ -16,6 +38,7 @@ while (filenname != 'q'):
     # Users file
     else:
         data = data[~(data["idnumber"].isna() | (data["idnumber"] == ""))]
+        data = split_germany_users(data, filenname)
         for name_index in data.index:
             data.loc[name_index, "idnumber"] = data["idnumber"][name_index].lower()
         for name_index in data.index:
