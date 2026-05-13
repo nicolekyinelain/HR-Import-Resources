@@ -7,7 +7,7 @@ def split_germany_job_assignments(data, filename):
     remaining_data = data[~germany_mask]
     if not germany_data.empty:
         germany_filename = filename.replace(".csv", "_JobyGermany.csv")
-        germany_data["tenant"] = "Joby Aviation Germany Tenant"
+        germany_data["tenantmember"] = "jbg"
         germany_data.to_csv(germany_filename)
     return remaining_data
 
@@ -18,14 +18,14 @@ def split_germany_users(data, filename):
     remaining_data = data[~germany_mask]
     if not germany_data.empty:
         germany_filename = filename.replace(".csv", "_JobyGermany.csv")
-        germany_data["tenant"] = "Joby Aviation Germany Tenant"
+        germany_data["tenantmember"] = "jbg"
         germany_data.to_csv(germany_filename)
     return remaining_data
 
 
 def main():
     # Get filename through stdin
-    filenname = input().strip('"')
+    filenname = input().strip('"').strip("'")
 
     while (filenname != 'q'):
         print("...working...")
