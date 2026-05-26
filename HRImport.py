@@ -111,6 +111,11 @@ class HRImport:
         # Determine whther or not the file being processed is a terminated employee file based on filename keyword - this is used for removing the 'deleted' column and renaming the 'suspended' column
         terminated = "terminated" in self.filename.lower()
 
+        # Remove the 'deleted' column and rename 'suspended' column to 'deleted'
+        if terminated:
+            self.data = self.data.drop(columns=["deleted"])
+            self.data = self.data.rename(columns={"suspended": "deleted"})
+
         # Remove rows where idnumber is missing or empty - this field is required for user identification
         self.data = self.data[~(self.data["idnumber"].isna() | (self.data["idnumber"] == ""))]
         
@@ -129,11 +134,6 @@ class HRImport:
             # Filter out known test/admin accounts to prevent test data in production systems
             if self.data.loc[name_index, "idnumber"] in dont_suspend:
                 self.data = self.data.drop(name_index)
-
-        # Remove the 'deleted' column and rename 'suspended' column to 'deleted'
-        if terminated:
-            self.data = self.data.drop(columns=["deleted"])
-            self.data = self.data.rename(columns={"suspended": "deleted"})
 
         return
     
