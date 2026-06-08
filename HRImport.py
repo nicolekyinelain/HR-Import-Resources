@@ -86,6 +86,11 @@ class HRImport:
         
         # Normalize email addresses and IDs to lowercase for consistent matching/comparison
         for name_index in self.data.index:
+            # Remove suspended users from the file
+            if self.data.loc[name_index, "suspended"] == 1:
+                self.data = self.data.drop(name_index)
+                continue
+
             self.data.loc[name_index, "Manager email"] = self.data["Manager email"][name_index].lower()
             self.data.loc[name_index, "useridnumber"] = self.data["useridnumber"][name_index].lower()
             
@@ -127,6 +132,16 @@ class HRImport:
         # Normalize email addresses and IDs to lowercase for consistent matching/comparison
         dont_suspend = pandas.read_csv("dont_suspend.csv")["email"].tolist()
         for name_index in self.data.index:
+            # Remove active users from the file if the file is a terminated users file
+            if self.data.loc[name_index, "deleted"] == 0 and terminated:
+                self.data = self.data.drop(name_index)
+                continue
+
+            # Remove suspended users from the file if the file is not a terminated users file
+            if self.data.loc[name_index, "suspended"] == 1 and not terminated:
+                self.data = self.data.drop(name_index)
+                continue
+
             self.data.loc[name_index, "idnumber"] = self.data["idnumber"][name_index].lower()
             self.data.loc[name_index, "email"] = self.data["email"][name_index].lower()
             self.data.loc[name_index, "tenantmember"] = None  # Clear tenantmember for non-tenant-specific records to prevent accidental enrollment

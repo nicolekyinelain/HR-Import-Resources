@@ -1,1 +1,6 @@
 dont_suspend.csv
+
+# Claude Code
+.claude/
+CLAUDE.md
+CLAUDE.local.md
