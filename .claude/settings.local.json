@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell(winget list Anthropic.ClaudeCode)",
-      "PowerShell(Get-ChildItem \"$env:APPDATA\\\\npm\" -ErrorAction SilentlyContinue | Select-Object Name | Format-Table -AutoSize)",
-      "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\Microsoft\\\\WinGet\\\\Packages\\\\Anthropic.ClaudeCode_Microsoft.Winget.Source_8wekyb3d8bbwe\" -Recurse -ErrorAction SilentlyContinue | Select-Object FullName, Length | Format-Table -AutoSize)"
-    ]
-  }
-}
