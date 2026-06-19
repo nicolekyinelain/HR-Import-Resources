@@ -178,5 +178,6 @@ class HRImport:
 
         # Print success message after potentially long-running operations complete
         print(f"Successfully processed file {self.filename}.")
+        print("Test")
 
         return
