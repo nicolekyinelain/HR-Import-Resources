@@ -52,19 +52,22 @@ class HRImport:
         """
         # Create boolean mask: True where business unit matches (case-insensitive), False elsewhere
         # Uses str accessor for vectorized string operations on entire column
-        germany_mask = self.data["business unit description"].str.strip().str.lower() == business_unit_description.lower()
+        tenant_mask = self.data["business unit description"].str.strip().str.lower() == business_unit_description.lower()
         
         # Extract matching records into separate dataframe for tenant-specific output file
-        germany_data = self.data.loc[germany_mask, :].copy()
+        tenant_data = self.data.loc[tenant_mask, :].copy()
         
         # Retain non-matching records as the new main dataset for subsequent processing
-        remaining_data = self.data.loc[~germany_mask, :]
+        remaining_data = self.data.loc[~tenant_mask, :]
         
         # Write tenant records to new CSV with tenant identifier in filename if records found
-        if not germany_data.empty:
-            germany_filename = self.filename.replace(".csv", f"_{tenant_id}.csv")
-            germany_data["tenantmember"] = tenant_id  # Add column for auto-enrollment in downstream systems
-            germany_data.to_csv(germany_filename)
+        if not tenant_data.empty:
+            tenant_filename = self.filename.replace(".csv", f" {tenant_id}.csv")
+            tenant_data["tenantmember"] = tenant_id  # Add column for auto-enrollment in downstream systems
+            tenant_data.to_csv(tenant_filename, index=False)
+
+            tentant_import = HRImport(tenant_filename)
+            tentant_import.run([]) # Process tenant-specific file without further tenant splitting
             
         return remaining_data
 
@@ -159,7 +162,7 @@ class HRImport:
         Raises:
             ValueError: If filename contains neither 'Job Assignments' nor 'Users' keyword
         """
-        print("...working...")
+        print(f"Working {self.filename}...")
 
         # Route to appropriate processing based on filename keyword to determine file type
         # Case-insensitive matching allows for variations in naming conventions
@@ -171,9 +174,9 @@ class HRImport:
             raise ValueError("Filename must contain either 'Job Assignments' or 'Users' to determine the type of file being processed.")
 
         # Persist transformed data back to original file location
-        self.data.to_csv(self.filename)
+        self.data.to_csv(self.filename, index=False)
 
         # Print success message after potentially long-running operations complete
-        print("Success!")
+        print(f"Successfully processed file {self.filename}.")
 
         return
