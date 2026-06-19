@@ -55,10 +55,10 @@ class HRImport:
         germany_mask = self.data["business unit description"].str.strip().str.lower() == business_unit_description.lower()
         
         # Extract matching records into separate dataframe for tenant-specific output file
-        germany_data = self.data[germany_mask].copy()
+        germany_data = self.data.loc[germany_mask, :].copy()
         
         # Retain non-matching records as the new main dataset for subsequent processing
-        remaining_data = self.data[~germany_mask]
+        remaining_data = self.data.loc[~germany_mask, :]
         
         # Write tenant records to new CSV with tenant identifier in filename if records found
         if not germany_data.empty:
@@ -78,7 +78,10 @@ class HRImport:
         converts manager email and useridnumber to lowercase, and filters out known test accounts.
         """
         # Remove rows where useridnumber is missing, empty, or NaN - this field is required downstream
-        self.data = self.data[~(self.data["useridnumber"].isna() | (self.data["useridnumber"] == ""))]
+        self.data = self.data.loc[
+            ~(self.data["useridnumber"].isna() | (self.data["useridnumber"] == "")),
+            :
+        ].copy()
         
         # Replace NaN values in Manager email with placeholder for downstream processing
         # Systems may expect a specific indicator rather than null to distinguish missing from invalid
@@ -117,7 +120,10 @@ class HRImport:
         terminated = "terminated" in self.filename.lower()
 
         # Remove rows where idnumber is missing or empty - this field is required for user identification
-        self.data = self.data[~(self.data["idnumber"].isna() | (self.data["idnumber"] == ""))]
+        self.data = self.data.loc[
+            ~(self.data["idnumber"].isna() | (self.data["idnumber"] == "")),
+            :
+        ].copy()
         
         # Split data for each configured tenant into separate CSV files with tenantmember assignment
         # Iteratively removes matching records from self.data in each iteration
