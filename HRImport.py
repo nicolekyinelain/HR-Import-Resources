@@ -52,19 +52,22 @@ class HRImport:
         """
         # Create boolean mask: True where business unit matches (case-insensitive), False elsewhere
         # Uses str accessor for vectorized string operations on entire column
-        germany_mask = self.data["business unit description"].str.strip().str.lower() == business_unit_description.lower()
+        tenant_mask = self.data["business unit description"].str.strip().str.lower() == business_unit_description.lower()
         
         # Extract matching records into separate dataframe for tenant-specific output file
-        germany_data = self.data[germany_mask].copy()
+        tenant_data = self.data.loc[tenant_mask, :].copy()
         
         # Retain non-matching records as the new main dataset for subsequent processing
-        remaining_data = self.data[~germany_mask]
+        remaining_data = self.data.loc[~tenant_mask, :]
         
         # Write tenant records to new CSV with tenant identifier in filename if records found
-        if not germany_data.empty:
-            germany_filename = self.filename.replace(".csv", f"_{tenant_id}.csv")
-            germany_data["tenantmember"] = tenant_id  # Add column for auto-enrollment in downstream systems
-            germany_data.to_csv(germany_filename)
+        if not tenant_data.empty:
+            tenant_filename = self.filename.replace(".csv", f" {tenant_id}.csv")
+            tenant_data["tenantmember"] = tenant_id  # Add column for auto-enrollment in downstream systems
+            tenant_data.to_csv(tenant_filename, index=False)
+
+            tentant_import = HRImport(tenant_filename)
+            tentant_import.run([]) # Process tenant-specific file without further tenant splitting
             
         return remaining_data
 
@@ -78,25 +81,25 @@ class HRImport:
         converts manager email and useridnumber to lowercase, and filters out known test accounts.
         """
         # Remove rows where useridnumber is missing, empty, or NaN - this field is required downstream
-        self.data = self.data[~(self.data["useridnumber"].isna() | (self.data["useridnumber"] == ""))]
+        self.data = self.data.loc[
+            ~(self.data["useridnumber"].isna() | (self.data["useridnumber"] == "")),
+            :
+        ].copy()
         
         # Replace NaN values in Manager email with placeholder for downstream processing
         # Systems may expect a specific indicator rather than null to distinguish missing from invalid
         self.data["Manager email"] = self.data["Manager email"].fillna("#N/A")
         
-        # Normalize email addresses and IDs to lowercase for consistent matching/comparison
-        for name_index in self.data.index:
-            # Remove suspended users from the file
-            if self.data.loc[name_index, "suspended"] == 1:
-                self.data = self.data.drop(name_index)
-                continue
+        # Drop suspended users
+        self.data = self.data.loc[self.data["suspended"] != 1, :].copy()
 
-            self.data.loc[name_index, "Manager email"] = self.data["Manager email"][name_index].lower()
-            self.data.loc[name_index, "useridnumber"] = self.data["useridnumber"][name_index].lower()
-            
-            # Filter out known test/admin accounts by idnumber to prevent test data in production
-            if self.data.loc[name_index, "idnumber"] == "joeben@joby.aero" or self.data.loc[name_index, "idnumber"] == "patryck.chipman@joby.aero":
-                self.data = self.data.drop(name_index)
+        # Normalize email addresses and IDs to lowercase for consistent matching/comparison
+        self.data["Manager email"] = self.data["Manager email"].str.lower()
+        self.data["useridnumber"] = self.data["useridnumber"].str.lower()
+
+        # Filter out known problematic accounts
+        dont_suspend = pandas.read_csv("dont_suspend.csv")["email"].tolist()
+        self.data = self.data.loc[~self.data["useridnumber"].isin(dont_suspend), :].copy()
 
         return
 
@@ -117,38 +120,31 @@ class HRImport:
         terminated = "terminated" in self.filename.lower()
 
         # Remove rows where idnumber is missing or empty - this field is required for user identification
-        self.data = self.data[~(self.data["idnumber"].isna() | (self.data["idnumber"] == ""))]
+        self.data = self.data.loc[
+            ~(self.data["idnumber"].isna() | (self.data["idnumber"] == "")),
+            :
+        ].copy()
         
         # Split data for each configured tenant into separate CSV files with tenantmember assignment
         # Iteratively removes matching records from self.data in each iteration
         for tenant in tenants:
             self.data = self._split_tenant(tenant["business_unit_description"], tenant["tenant_id"])
         
-        # Normalize email addresses and IDs to lowercase for consistent matching/comparison
-        dont_suspend = pandas.read_csv("dont_suspend.csv")["email"].tolist()
-        for name_index in self.data.index:
-            # Remove active users from the file if the file is a terminated users file
-            if self.data.loc[name_index, "deleted"] == 0 and terminated:
-                self.data = self.data.drop(name_index)
-                continue
-
-            # Remove suspended users from the file if the file is not a terminated users file
-            if self.data.loc[name_index, "suspended"] == 1 and not terminated:
-                self.data = self.data.drop(name_index)
-                continue
-
-            self.data.loc[name_index, "idnumber"] = self.data["idnumber"][name_index].lower()
-            self.data.loc[name_index, "email"] = self.data["email"][name_index].lower()
-            self.data.loc[name_index, "tenantmember"] = None  # Clear tenantmember for non-tenant-specific records to prevent accidental enrollment
-            
-            # Filter out known test/admin accounts to prevent test data in production systems
-            if self.data.loc[name_index, "idnumber"] in dont_suspend:
-                self.data = self.data.drop(name_index)
-
-        # Remove the 'deleted' column and rename 'suspended' column to 'deleted'
-        if terminated:
+        if terminated: # If processing a terminated employee file, filter to suspended users and rename columns accordingly
+            self.data = self.data.loc[self.data["suspended"] == 1, :].copy()
             self.data = self.data.drop(columns=["deleted"])
             self.data = self.data.rename(columns={"suspended": "deleted"})
+        else: # For active employee files, filter out suspended users
+            self.data = self.data.loc[self.data["suspended"] == 0, :].copy()
+
+        # Normalize email addresses and IDs to lowercase for consistent matching/comparison
+        self.data["idnumber"] = self.data["idnumber"].str.lower()
+        self.data["email"] = self.data["email"].str.lower()
+        self.data["tenantmember"] = None  # Clear tenantmember for non-tenant-specific records to prevent accidental enrollment
+
+        # Filter out known problematic accounts
+        dont_suspend = pandas.read_csv("dont_suspend.csv")["email"].tolist()
+        self.data = self.data.loc[~self.data["idnumber"].isin(dont_suspend), :].copy()
 
         return
     
@@ -166,7 +162,7 @@ class HRImport:
         Raises:
             ValueError: If filename contains neither 'Job Assignments' nor 'Users' keyword
         """
-        print("...working...")
+        print(f"Working {self.filename}...")
 
         # Route to appropriate processing based on filename keyword to determine file type
         # Case-insensitive matching allows for variations in naming conventions
@@ -178,9 +174,9 @@ class HRImport:
             raise ValueError("Filename must contain either 'Job Assignments' or 'Users' to determine the type of file being processed.")
 
         # Persist transformed data back to original file location
-        self.data.to_csv(self.filename)
+        self.data.to_csv(self.filename, index=False)
 
         # Print success message after potentially long-running operations complete
-        print("Success!")
+        print(f"Successfully processed file {self.filename}.")
 
         return

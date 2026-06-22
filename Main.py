@@ -78,12 +78,12 @@ def main() -> None:
 
     # Loop until user enters 'q' to quit, processing each CSV file with the selected tenants
     # Input stripping removes surrounding quotes that file explorers often add when copying paths
-    filename: str = input().strip('"').strip("'")
+    filename: str = input().strip('"').strip("'").replace("\\", "").strip()
     
     while filename.lower() not in QUIT_CRITERIA:
         # Backup original files to a separate directory to preserve unmodified data for auditing or reprocessing if needed
         try:
-            oringial_files_dir = os.path.dirname(filename) + "/original_files"
+            oringial_files_dir = os.path.dirname(filename) + "/Original Files"
             os.makedirs(oringial_files_dir, exist_ok=True)
             shutil.copy(filename, oringial_files_dir + "/" + "Original " + os.path.basename(filename))
         except FileNotFoundError as e:
@@ -94,7 +94,7 @@ def main() -> None:
         hr_import.run(use_tenants)
         
         # Prompt for next filename (or 'q' to exit)
-        filename = input().strip('"').strip("'")
+        filename = input().strip('"').strip("'").replace("\\", "").strip()
 
 
 if __name__ == "__main__":
