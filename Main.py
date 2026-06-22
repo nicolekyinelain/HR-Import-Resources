@@ -83,7 +83,7 @@ def main() -> None:
     while filename.lower() not in QUIT_CRITERIA:
         # Backup original files to a separate directory to preserve unmodified data for auditing or reprocessing if needed
         try:
-            oringial_files_dir = os.path.dirname(filename) + "/original_files"
+            oringial_files_dir = os.path.dirname(filename) + "/Original Files"
             os.makedirs(oringial_files_dir, exist_ok=True)
             shutil.copy(filename, oringial_files_dir + "/" + "Original " + os.path.basename(filename))
         except FileNotFoundError as e:
