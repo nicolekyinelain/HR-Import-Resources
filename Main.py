@@ -8,7 +8,7 @@ import os
 import sys
 import shutil
 import Tenants
-import HrImport
+import HRImport
 
 QUIT_CRITERIA = {"q", "quit", "exit"}
 
@@ -90,7 +90,7 @@ def main() -> None:
             print(f"Warning: Failed to backup original file '{filename}' - {e}")
 
         # Instantiate HR import handler for this file and execute transformations with selected tenants
-        hr_import: HrImport.HRImport = HrImport.HRImport(filename)
+        hr_import: HRImport.HRImport = HRImport.HRImport(filename)
         hr_import.run(use_tenants)
         
         # Prompt for next filename (or 'q' to exit)
